@@ -1,0 +1,8 @@
+desc "Create a new distribution"
+task :build do
+  sh "cabal install --ghcjs"
+  sh "mv dist/build/dexterio/dexterio.jsexe/all.js ."
+  sh "rm -r dist"
+  sh "mkdir dist"
+  sh "mv all.js dist"
+end
