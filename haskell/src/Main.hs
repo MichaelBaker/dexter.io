@@ -73,11 +73,15 @@ processEvent app (AddCounter playerName) = newCounterApp
         newPoints     = pointsRemaining app + 30
         newCounters   = counters app ++ [Counter 0 playerName $ length $ counters app]
 processEvent app (Plus targetId) = app { counters = newCounters, pointsRemaining = pointsRemaining app - 1 }
-  where newCounters = map incCounter $ counters app
-        incCounter counter = if counterId counter == targetId then counter { score = score counter + 1 } else counter
+  where newCounters = flip map counters $ \c -> 
+                        if counterId c == targetId
+                           then c + 1
+                           else c
 processEvent app (Minus targetId) = app { counters = newCounters, pointsRemaining = pointsRemaining app + 1 }
-  where newCounters = map incCounter $ counters app
-        incCounter counter = if counterId counter == targetId then counter { score = score counter - 1 } else counter
+  where newCounters = flip map counters $ \c -> 
+                        if (counterId c == targetId) && (c > 0)
+                           then c - 1
+                           else c
 
 setupPlayerClick ch counterId el = do
   plusEl  <- find ".plus" el
@@ -86,3 +90,11 @@ setupPlayerClick ch counterId el = do
   forM_ [(plusEl, Plus), (minusEl, Minus)] $ \(clickedEl, ctor) -> do
     let action = writeChan ch (ctor counterId)
     click (const action) def clickedEl
+
+
+
+
+
+
+
+
