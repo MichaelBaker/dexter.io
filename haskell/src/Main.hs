@@ -9,24 +9,24 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Text.Blaze.Html5 hiding (select, map)
 import Text.Blaze.Html.Renderer.Text
-import Text.Blaze.Html5.Attributes hiding (loop)
+import Text.Blaze.Html5.Attributes hiding (loop, max)
 import Text.Blaze
 import Data.String
 
 data AppEvent = Plus Int
               | Minus Int
               | AddCounter String
-              deriving (Show)
+              deriving (Show, Eq)
 
 
-data CounterApp = CounterApp { pointsRemaining :: Int
-                             , counters        :: [Counter]
-                             } deriving (Show)
+data CounterApp = CounterApp { maxPoints :: Int
+                             , counters  :: [Counter]
+                             } deriving (Show, Eq)
 
 data Counter = Counter { score      :: Int
                        , playerName :: String
                        , counterId  :: Int
-                       } deriving (Show)
+                       } deriving (Show, Eq)
 
 counterHtml playerName = div $ toHtml playerName
 
@@ -69,19 +69,17 @@ setupAddPointButton eventChannel counter = do
   setupPlayerClick eventChannel (counterId counter) counterElement
 
 processEvent app (AddCounter playerName) = newCounterApp
-  where newCounterApp = app { counters = newCounters, pointsRemaining = newPoints }
-        newPoints     = pointsRemaining app + 30
+  where newCounterApp = app { counters = newCounters, maxPoints = newPoints }
+        newPoints     = maxPoints app + 30
         newCounters   = counters app ++ [Counter 0 playerName $ length $ counters app]
-processEvent app (Plus targetId) = app { counters = newCounters, pointsRemaining = pointsRemaining app - 1 }
-  where newCounters = flip map counters $ \c -> 
-                        if counterId c == targetId
-                           then c + 1
-                           else c
-processEvent app (Minus targetId) = app { counters = newCounters, pointsRemaining = pointsRemaining app + 1 }
-  where newCounters = flip map counters $ \c -> 
-                        if (counterId c == targetId) && (c > 0)
-                           then c - 1
-                           else c
+processEvent app (Plus targetId)  = app { counters = newCounters }
+  where newCounters    = map update $ counters app
+        update counter = if counterId counter == targetId then counter { score = score counter + 1 } else counter
+processEvent app (Minus targetId) = app { counters = newCounters }
+  where newCounters    = map update $ counters app
+        update counter = if counterId counter == targetId then counter { score = max 0 $ score counter - 1 } else counter
+
+pointsRemaining app = max 0 $ maxPoints app - (sum $ map score $ counters app)
 
 setupPlayerClick ch counterId el = do
   plusEl  <- find ".plus" el
@@ -90,11 +88,3 @@ setupPlayerClick ch counterId el = do
   forM_ [(plusEl, Plus), (minusEl, Minus)] $ \(clickedEl, ctor) -> do
     let action = writeChan ch (ctor counterId)
     click (const action) def clickedEl
-
-
-
-
-
-
-
-
