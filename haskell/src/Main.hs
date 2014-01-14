@@ -21,6 +21,7 @@ data AppEvent = Plus Int
               | EndGame
               | ResumeGame
               | CardScore Int Int
+              | AddPoint
               deriving (Show, Eq)
 
 
@@ -54,6 +55,8 @@ startGameTemplate counterApp = do
   div ! class_ "counter-app" $ do
     div ! class_ "add-counter-button" $ do
       "Add Counter"
+    div ! class_ "add-point-button" $ do
+      "Add Point"
   div $ toHtml (pointsRemaining counterApp)
   forM_ (counters counterApp) $ \counter -> do
     div ! class_ "counter" ! attr "counter-id" (fromString $ show $ counterId counter) $ do
@@ -92,15 +95,17 @@ processEvent app (NameChange targetId newName) = app { counters = newCounters }
 processEvent app (CardScore targetId score) = app { counters = newCounters }
   where newCounters    = map update $ counters app
         update counter = if counterId counter == targetId then counter { cardScore = score } else counter
-processEvent app EndGame = app { gameOver = True }
+processEvent app EndGame    = app { gameOver = True }
 processEvent app ResumeGame = app { gameOver = False }
+processEvent app AddPoint   = app { maxPoints = maxPoints app + 1 }
 
 pointsRemaining app = max 0 $ maxPoints app - (sum $ map score $ counters app)
 
 setHandlers eventChannel app = do
-  setupAddCounterButton eventChannel
-  setupEndGameButton    eventChannel
-  setupResumeGameButton eventChannel
+  setupAddCounterButton  eventChannel
+  setupEndGameButton     eventChannel
+  setupResumeGameButton  eventChannel
+  setupAddMaxPointButton eventChannel
   mapM_ (setupAddPointButton eventChannel) $ counters app
   mapM_ (setupCardScore eventChannel)      $ counters app
 
@@ -113,6 +118,11 @@ setupEndGameButton eventChannel = do
   endGameButton <- select ".end-game-button"
   let action = writeChan eventChannel $ EndGame
   click (const action) def endGameButton
+
+setupAddMaxPointButton eventChannel = do
+  addPointButton <- select ".add-point-button"
+  let action = writeChan eventChannel AddPoint
+  click (const action) def addPointButton
 
 setupResumeGameButton eventChannel = do
   resumeGameButton <- select ".resume-game-button"
