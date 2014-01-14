@@ -12,4 +12,5 @@ executable dexterio
   main-is:             Main.hs
   build-depends:       base >=4.7 && <4.8, text, data-default, ghcjs-jquery, blaze-html, blaze-markup, safe
   hs-source-dirs:      src
+  ghc-options:         -W
   default-language:    Haskell2010
