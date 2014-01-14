@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Prelude hiding (div)
+import Prelude hiding (div, span)
 import JavaScript.JQuery
 import Control.Concurrent.Chan
 import Data.Default
@@ -9,13 +9,14 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import Text.Blaze.Html5 hiding (select, map)
 import Text.Blaze.Html.Renderer.Text
-import Text.Blaze.Html5.Attributes hiding (loop, max)
+import Text.Blaze.Html5.Attributes hiding (loop, max, span)
 import Text.Blaze
 import Data.String
 
 data AppEvent = Plus Int
               | Minus Int
               | AddCounter String
+              | NameChange Int String
               deriving (Show, Eq)
 
 
@@ -27,8 +28,6 @@ data Counter = Counter { score      :: Int
                        , playerName :: String
                        , counterId  :: Int
                        } deriving (Show, Eq)
-
-counterHtml playerName = div $ toHtml playerName
 
 main = do
   eventChannel <- newChan
@@ -48,10 +47,10 @@ render counterApp = do
   div $ toHtml (pointsRemaining counterApp)
   forM_ (counters counterApp) $ \counter -> do
     div ! class_ "counter" ! attr "counter-id" (fromString $ show $ counterId counter) $ do
-      toHtml (playerName counter)
-      div ! class_ "minus" $ "-" 
-      div $ toHtml (score counter)
-      div ! class_ "plus" $ "+"
+      input ! class_ "player-name" ! value (fromString $ playerName counter)
+      span ! class_ "minus" $ "-" 
+      span $ toHtml (score counter)
+      span ! class_ "plus" $ "+"
 
 attr = customAttribute
 
@@ -61,12 +60,13 @@ setHandlers eventChannel app = do
 
 setupAddCounterButton eventChannel = do
   addCounterButton <- select ".add-counter-button"
-  let action = writeChan eventChannel $ AddCounter "Hello"
+  let action = writeChan eventChannel $ AddCounter "Enter Name"
   click (const action) def addCounterButton
 
 setupAddPointButton eventChannel counter = do
   counterElement <- select $ T.pack $ ".counter[counter-id=" ++ show (counterId counter) ++ "]"
   setupPlayerClick eventChannel (counterId counter) counterElement
+  setupNameChange  eventChannel (counterId counter) counterElement
 
 processEvent app (AddCounter playerName) = newCounterApp
   where newCounterApp = app { counters = newCounters, maxPoints = newPoints }
@@ -78,6 +78,9 @@ processEvent app (Plus targetId)  = app { counters = newCounters }
 processEvent app (Minus targetId) = app { counters = newCounters }
   where newCounters    = map update $ counters app
         update counter = if counterId counter == targetId then counter { score = max 0 $ score counter - 1 } else counter
+processEvent app (NameChange targetId newName) = app { counters = newCounters }
+  where newCounters    = map update $ counters app
+        update counter = if counterId counter == targetId then counter {  playerName = newName } else counter
 
 pointsRemaining app = max 0 $ maxPoints app - (sum $ map score $ counters app)
 
@@ -88,3 +91,8 @@ setupPlayerClick ch counterId el = do
   forM_ [(plusEl, Plus), (minusEl, Minus)] $ \(clickedEl, ctor) -> do
     let action = writeChan ch (ctor counterId)
     click (const action) def clickedEl
+
+setupNameChange channel counterId element = do
+  nameElement <- find ".player-name" element
+  let handle = getVal nameElement >>= (\name -> writeChan channel $ NameChange counterId $ T.unpack name)
+  change (const handle) def nameElement
