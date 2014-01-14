@@ -2,13 +2,13 @@
 
 module Template where
 
-import Prelude hiding (div)
+import Prelude                hiding (div, span)
 import Data.String                   (fromString)
-import Text.Blaze.Html5              (div, input, (!), toHtml)
+import Text.Blaze.Html5              (div, input, (!), toHtml, span)
 import Text.Blaze.Html5.Attributes   (class_, value)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Blaze                    (customAttribute)
-import JavaScript.JQuery             (select, find, getVal, click, keyup, change, setHtml, append)
+import JavaScript.JQuery             (select, find, getVal, click, keyup, setHtml, append)
 import Control.Monad                 (forM_)
 import Data.Text.Lazy                (toStrict)
 import Data.Text                     (pack, unpack)
@@ -100,10 +100,12 @@ startGameTemplate counterApp = do
 endGameTemplate counterApp = do
   forM_ (counters counterApp) $ \counter -> do
     div ! class_ "counter" ! attr "counter-id" (fromString $ show $ counterId counter) $ do
-      div $ fromString $ playerName counter
-      div ! class_ "total-score" $ toHtml $ score counter + cardScore counter
-      div $ "Card Score"
+      div ! class_ "player-name" $ fromString $ playerName counter
+      div ! class_ "score" $ fromString $ show $ score counter
+      span "+"
       input ! class_ "card-score" ! value (fromString $ show $ cardScore counter)
+      span "="
+      div ! class_ "total-score" $ toHtml $ score counter + cardScore counter
   div ! class_ "resume-game-button" $ do
     "Resume Game"
 
@@ -151,7 +153,7 @@ setupNameChange channel counterId element = do
 setupCardScore eventChannel counter = do
   counterElement   <- select $ pack $ ".counter[counter-id=" ++ show (counterId counter) ++ "]"
   cardScoreElement <- find ".card-score" counterElement
-  change (const $ handleCardScore cardScoreElement eventChannel counter) def cardScoreElement
+  keyup (const $ handleCardScore cardScoreElement eventChannel counter) def cardScoreElement
 
 handleCardScore cardScoreElement eventChannel counter = do
   scoreText <- getVal cardScoreElement

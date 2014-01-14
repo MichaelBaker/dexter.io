@@ -1,0 +1,13 @@
+.subtract-point-button,
+.add-point-button,
+.minus,
+.plus,
+.score,
+.add-counter-button,
+.end-game-button,
+.total-score,
+.card-score,
+.points-remaining {
+  display: inline-block;
+  margin:  5px;
+}
