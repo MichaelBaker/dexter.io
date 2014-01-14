@@ -84,17 +84,18 @@ counterTemplate counter = do
 
 startGameTemplate counterApp = do
   div ! class_ "counter-app" $ do
+    div "Points Remaining"
+    div ! class_ "subtract-point-button" $ do
+      "-"
+    div ! class_ "points-remaining" $ toHtml (pointsRemaining counterApp)
+    div ! class_ "add-point-button" $ do
+      "+"
+    div ! class_ "counters" $ do
+      forM_ (counters counterApp) counterTemplate
     div ! class_ "add-counter-button" $ do
-      "Add Counter"
-  div ! class_ "subtract-point-button" $ do
-    "-"
-  div ! class_ "points-remaining" $ toHtml (pointsRemaining counterApp)
-  div ! class_ "add-point-button" $ do
-    "+"
-  div ! class_ "counters" $ do
-    forM_ (counters counterApp) counterTemplate
-  div ! class_ "end-game-button" $ do
-    "End Game"
+      "Add Player"
+    div ! class_ "end-game-button" $ do
+      "End Game"
 
 endGameTemplate counterApp = do
   forM_ (counters counterApp) $ \counter -> do
