@@ -12,12 +12,15 @@ import Text.Blaze.Html.Renderer.Text
 import Text.Blaze.Html5.Attributes hiding (loop, max, span)
 import Text.Blaze
 import Data.String
+import Safe
 
 data AppEvent = Plus Int
               | Minus Int
               | AddCounter String
               | NameChange Int String
               | EndGame
+              | ResumeGame
+              | CardScore Int Int
               deriving (Show, Eq)
 
 
@@ -43,7 +46,9 @@ loop counterApp eventChannel = do
   event   <- readChan eventChannel
   loop (processEvent counterApp event) eventChannel
 
-render counterApp = if (gameOver counterApp) then endGameTemplate counterApp else startGameTemplate counterApp
+render counterApp = if (gameOver counterApp)
+                      then endGameTemplate   counterApp
+                      else startGameTemplate counterApp
 
 startGameTemplate counterApp = do
   div ! class_ "counter-app" $ do
@@ -53,36 +58,23 @@ startGameTemplate counterApp = do
   forM_ (counters counterApp) $ \counter -> do
     div ! class_ "counter" ! attr "counter-id" (fromString $ show $ counterId counter) $ do
       input ! class_ "player-name" ! value (fromString $ playerName counter)
-      span ! class_ "minus" $ "-" 
-      span $ toHtml (score counter)
-      span ! class_ "plus" $ "+"
+      div ! class_ "minus" $ "-" 
+      div $ toHtml (score counter)
+      div ! class_ "plus" $ "+"
   div ! class_ "end-game-button" $ do
     "End Game"
 
 endGameTemplate counterApp = do
-  "Game Over"
+  forM_ (counters counterApp) $ \counter -> do
+    div ! class_ "counter" ! attr "counter-id" (fromString $ show $ counterId counter) $ do
+      div $ fromString $ playerName counter
+      div $ toHtml $ score counter + cardScore counter
+      div $ "Card Score"
+      input ! class_ "card-score" ! value (fromString $ show $ cardScore counter)
+  div ! class_ "resume-game-button" $ do
+    "Resume Game"
 
 attr = customAttribute
-
-setHandlers eventChannel app = do
-  setupAddCounterButton eventChannel
-  setupEndGameButton    eventChannel
-  mapM_ (setupAddPointButton eventChannel) $ counters app
-
-setupAddCounterButton eventChannel = do
-  addCounterButton <- select ".add-counter-button"
-  let action = writeChan eventChannel $ AddCounter "Enter Name"
-  click (const action) def addCounterButton
-
-setupEndGameButton eventChannel = do
-  endGameButton <- select ".end-game-button"
-  let action = writeChan eventChannel $ EndGame
-  click (const action) def endGameButton
-
-setupAddPointButton eventChannel counter = do
-  counterElement <- select $ T.pack $ ".counter[counter-id=" ++ show (counterId counter) ++ "]"
-  setupPlayerClick eventChannel (counterId counter) counterElement
-  setupNameChange  eventChannel (counterId counter) counterElement
 
 processEvent app (AddCounter playerName) = newCounterApp
   where newCounterApp = app { counters = newCounters, maxPoints = newPoints }
@@ -96,10 +88,41 @@ processEvent app (Minus targetId) = app { counters = newCounters }
         update counter = if counterId counter == targetId then counter { score = max 0 $ score counter - 1 } else counter
 processEvent app (NameChange targetId newName) = app { counters = newCounters }
   where newCounters    = map update $ counters app
-        update counter = if counterId counter == targetId then counter {  playerName = newName } else counter
+        update counter = if counterId counter == targetId then counter { playerName = newName } else counter
+processEvent app (CardScore targetId score) = app { counters = newCounters }
+  where newCounters    = map update $ counters app
+        update counter = if counterId counter == targetId then counter { cardScore = score } else counter
 processEvent app EndGame = app { gameOver = True }
+processEvent app ResumeGame = app { gameOver = False }
 
 pointsRemaining app = max 0 $ maxPoints app - (sum $ map score $ counters app)
+
+setHandlers eventChannel app = do
+  setupAddCounterButton eventChannel
+  setupEndGameButton    eventChannel
+  setupResumeGameButton eventChannel
+  mapM_ (setupAddPointButton eventChannel) $ counters app
+  mapM_ (setupCardScore eventChannel)      $ counters app
+
+setupAddCounterButton eventChannel = do
+  addCounterButton <- select ".add-counter-button"
+  let action = writeChan eventChannel $ AddCounter "Enter Name"
+  click (const action) def addCounterButton
+
+setupEndGameButton eventChannel = do
+  endGameButton <- select ".end-game-button"
+  let action = writeChan eventChannel $ EndGame
+  click (const action) def endGameButton
+
+setupResumeGameButton eventChannel = do
+  resumeGameButton <- select ".resume-game-button"
+  let action = writeChan eventChannel $ ResumeGame
+  click (const action) def resumeGameButton
+
+setupAddPointButton eventChannel counter = do
+  counterElement <- select $ T.pack $ ".counter[counter-id=" ++ show (counterId counter) ++ "]"
+  setupPlayerClick eventChannel (counterId counter) counterElement
+  setupNameChange  eventChannel (counterId counter) counterElement
 
 setupPlayerClick ch counterId el = do
   plusEl  <- find ".plus" el
@@ -113,3 +136,14 @@ setupNameChange channel counterId element = do
   nameElement <- find ".player-name" element
   let handle = getVal nameElement >>= (\name -> writeChan channel $ NameChange counterId $ T.unpack name)
   change (const handle) def nameElement
+
+setupCardScore eventChannel counter = do
+  counterElement   <- select $ T.pack $ ".counter[counter-id=" ++ show (counterId counter) ++ "]"
+  cardScoreElement <- find ".card-score" counterElement
+  change (const $ handleCardScore cardScoreElement eventChannel counter) def cardScoreElement
+
+handleCardScore cardScoreElement eventChannel counter = do
+  scoreText <- getVal cardScoreElement
+  case readMay $ T.unpack scoreText of
+    Nothing       -> return ()
+    Just newScore -> writeChan eventChannel $ CardScore (counterId counter) newScore
