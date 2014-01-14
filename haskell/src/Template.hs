@@ -86,9 +86,11 @@ startGameTemplate counterApp = do
   div ! class_ "counter-app" $ do
     div ! class_ "add-counter-button" $ do
       "Add Counter"
-    div ! class_ "add-point-button" $ do
-      "Add Point"
+  div ! class_ "subtract-point-button" $ do
+    "-"
   div ! class_ "points-remaining" $ toHtml (pointsRemaining counterApp)
+  div ! class_ "add-point-button" $ do
+    "+"
   div ! class_ "counters" $ do
     forM_ (counters counterApp) counterTemplate
   div ! class_ "end-game-button" $ do
@@ -115,9 +117,12 @@ setupEndGameButton eventChannel = do
   click (const action) def endGameButton
 
 setupAddMaxPointButton eventChannel = do
-  addPointButton <- select ".add-point-button"
-  let action = writeChan eventChannel AddPoint
-  click (const action) def addPointButton
+  addPointButton      <- select ".add-point-button"
+  subtractPointButton <- select ".subtract-point-button"
+  let add   = writeChan eventChannel AddPoint
+      minus = writeChan eventChannel SubtractPoint
+  click (const add)   def addPointButton
+  click (const minus) def subtractPointButton
 
 setupResumeGameButton eventChannel = do
   resumeGameButton <- select ".resume-game-button"

@@ -11,6 +11,7 @@ data AppEvent = Plus Int
               | ResumeGame
               | CardScore Int Int
               | AddPoint
+              | SubtractPoint
               deriving (Show, Eq)
 
 processEvent app (AddCounter playerName) = newCounterApp
@@ -29,6 +30,7 @@ processEvent app (NameChange targetId newName) = app { counters = newCounters }
 processEvent app (CardScore targetId score) = app { counters = newCounters }
   where newCounters    = map update $ counters app
         update counter = if counterId counter == targetId then counter { cardScore = score } else counter
-processEvent app EndGame    = app { gameOver = True }
-processEvent app ResumeGame = app { gameOver = False }
-processEvent app AddPoint   = app { maxPoints = maxPoints app + 1 }
+processEvent app EndGame       = app { gameOver = True }
+processEvent app ResumeGame    = app { gameOver = False }
+processEvent app AddPoint      = app { maxPoints = maxPoints app + 1 }
+processEvent app SubtractPoint = app { maxPoints = max 0 $ maxPoints app - 1 }
